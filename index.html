@@ -7,24 +7,33 @@
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <link rel="stylesheet" href="css/leaflet.css">
-        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
         <link rel="stylesheet" href="css/qgis2web.css">
         <link rel="stylesheet" href="css/fontawesome-all.min.css">
         <link rel="stylesheet" href="css/leaflet.photon.css">
         <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden;
+        }
         #map {
-            width: 1236px;
-            height: 627px;
+            position: fixed;
+            inset: 0;
+            width: auto !important;
+            height: auto !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
         </style>
-        <title></title>
+        <title>Mapa gminy Złoty Stok</title>
     </head>
     <body>
         <div id="map">
         </div>
         <script src="js/qgis2web_expressions.js"></script>
         <script src="js/leaflet.js"></script>
-        <script src="js/L.Control.Layers.Tree.min.js"></script>
         <script src="js/leaflet.rotatedMarker.js"></script>
         <script src="js/leaflet.pattern.js"></script>
         <script src="js/leaflet-hash.js"></script>
@@ -38,7 +47,7 @@
         <script>
         var map = L.map('map', {
             zoomControl:false, maxZoom:28, minZoom:1
-        }).fitBounds([[50.41102402562672,16.766301869177962],[50.48168798787228,16.985395583483502]]);
+        }).fitBounds([[50.42629991128046,16.755354951169327],[50.496941076791984,16.97444866547487]]);
         var hash = new L.Hash(map);
         map.attributionControl.setPrefix('<a href="https://github.com/qgis2web/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
         var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
@@ -125,7 +134,7 @@
         var layer_OpenStreetMap_0 = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             pane: 'pane_OpenStreetMap_0',
             opacity: 1.0,
-            attribution: '',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
             minZoom: 1,
             maxZoom: 28,
             minNativeZoom: 0,
@@ -358,31 +367,6 @@
         });
         bounds_group.addLayer(layer_nazwy_liniowe_2);
         map.addLayer(layer_nazwy_liniowe_2);
-        map.on("zoomend", function(){
-
-                if (map.hasLayer(layer_nazwy_punktowe_1)) {
-                    if (map.getZoom() <= 14 && map.getZoom() >= 19) {
-                        layer_nazwy_punktowe_1.eachLayer(function (layer) {
-                            layer.openTooltip();
-                        });
-                    } else {
-                        layer_nazwy_punktowe_1.eachLayer(function (layer) {
-                            layer.closeTooltip();
-                        });
-                    }
-                }
-                if (map.hasLayer(layer_nazwy_liniowe_2)) {
-                    if (map.getZoom() <= 14 && map.getZoom() >= 19) {
-                        layer_nazwy_liniowe_2.eachLayer(function (layer) {
-                            layer.openTooltip();
-                        });
-                    } else {
-                        layer_nazwy_liniowe_2.eachLayer(function (layer) {
-                            layer.closeTooltip();
-                        });
-                    }
-                }
-        });
         setBounds();
         var i = 0;
         layer_nazwy_punktowe_1.eachLayer(function(layer) {
@@ -410,28 +394,6 @@
               addLabel(layer, i);
               i++;
         });
-                if (map.hasLayer(layer_nazwy_punktowe_1)) {
-                    if (map.getZoom() <= 14 && map.getZoom() >= 19) {
-                        layer_nazwy_punktowe_1.eachLayer(function (layer) {
-                            layer.openTooltip();
-                        });
-                    } else {
-                        layer_nazwy_punktowe_1.eachLayer(function (layer) {
-                            layer.closeTooltip();
-                        });
-                    }
-                }
-                if (map.hasLayer(layer_nazwy_liniowe_2)) {
-                    if (map.getZoom() <= 14 && map.getZoom() >= 19) {
-                        layer_nazwy_liniowe_2.eachLayer(function (layer) {
-                            layer.openTooltip();
-                        });
-                    } else {
-                        layer_nazwy_liniowe_2.eachLayer(function (layer) {
-                            layer.closeTooltip();
-                        });
-                    }
-                }
         resetLabels([layer_nazwy_punktowe_1,layer_nazwy_liniowe_2]);
         map.on("zoomend", function(){
             resetLabels([layer_nazwy_punktowe_1,layer_nazwy_liniowe_2]);
@@ -443,5 +405,6 @@
             resetLabels([layer_nazwy_punktowe_1,layer_nazwy_liniowe_2]);
         });
         </script>
+        <script src="js/label-zoom-control.js"></script>
     </body>
 </html>
