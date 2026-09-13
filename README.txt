@@ -17,3 +17,4 @@ immediately by opening the "index.html" file.
 Example:
 
 "https://www.example.com/my-map/index.html"
+
