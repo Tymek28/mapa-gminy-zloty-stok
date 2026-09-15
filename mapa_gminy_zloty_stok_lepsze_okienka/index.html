@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet.photon.css">
+        <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden;
+        }
+        #map {
+            position: fixed;
+            inset: 0;
+            width: auto !important;
+            height: auto !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Czytelne popupy mapy historycznej */
+        .leaflet-popup-content-wrapper {
+            padding: 0;
+            border-radius: 14px;
+            box-shadow: 0 8px 28px rgba(0,0,0,.22);
+            overflow: hidden;
+        }
+        .leaflet-popup-content {
+            margin: 0;
+            width: min(370px, calc(100vw - 70px)) !important;
+            max-height: min(72vh, 590px);
+            overflow-y: auto;
+            font-family: "Open Sans", Arial, sans-serif;
+            color: #262626;
+        }
+        .leaflet-popup-tip { box-shadow: 2px 2px 4px rgba(0,0,0,.08); }
+        .map-popup { min-width: 245px; background: #fff; }
+        .map-popup__head {
+            padding: 14px 17px 12px;
+            background: #f5f3ee;
+            border-bottom: 1px solid #e4e0d7;
+        }
+        .map-popup__title {
+            margin: 0;
+            font-size: 19px;
+            line-height: 1.25;
+            font-weight: 700;
+            color: #1f1f1f;
+        }
+        .map-popup__meta {
+            margin-top: 5px;
+            font-size: 12.5px;
+            line-height: 1.35;
+            color: #666;
+        }
+        .map-popup__badge {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid #d8d2c5;
+            background: #fff;
+            color: #5c5548;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .02em;
+        }
+        .map-popup__body { padding: 8px 17px 15px; }
+        .map-popup__row {
+            display: grid;
+            grid-template-columns: 112px minmax(0,1fr);
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #efede8;
+        }
+        .map-popup__row:last-of-type { border-bottom: 0; }
+        .map-popup__label {
+            font-size: 11px;
+            line-height: 1.4;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .035em;
+            color: #777;
+        }
+        .map-popup__value {
+            font-size: 13.5px;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+        .map-popup__source-form { font-style: italic; }
+        .map-popup__note {
+            margin-top: 8px;
+            padding-top: 10px;
+            border-top: 1px solid #e6e2da;
+        }
+        .map-popup__note-title {
+            margin-bottom: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .035em;
+            color: #777;
+        }
+        .map-popup__note-text {
+            font-size: 13.5px;
+            line-height: 1.52;
+        }
+        .map-popup a { color: #245c8a; text-decoration: underline; }
+        @media (max-width: 430px) {
+            .leaflet-popup-content { width: calc(100vw - 56px) !important; max-height: 68vh; }
+            .map-popup__row { grid-template-columns: 1fr; gap: 2px; }
+            .map-popup__head { padding: 13px 15px 11px; }
+            .map-popup__body { padding: 7px 15px 13px; }
+        }
+        </style>
+        <title>Mapa gminy Złoty Stok</title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet.photon.js"></script>
+        <script src="data/nazwy_punktowe_1.js"></script>
+        <script src="data/nazwy_liniowe_2.js"></script>
+        <script>
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        }).fitBounds([[50.42629991128046,16.755354951169327],[50.496941076791984,16.97444866547487]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/qgis2web/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+
+        function popupEscape(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+        function popupHas(value) {
+            return value !== null && value !== undefined && String(value).trim() !== '';
+        }
+        function popupLinked(value) {
+            if (!popupHas(value)) return '';
+            return autolinker.link(popupEscape(value));
+        }
+        function popupCap(value) {
+            if (!popupHas(value)) return '';
+            var text = String(value).trim();
+            return text.charAt(0).toUpperCase() + text.slice(1);
+        }
+        function buildHistoricalPopup(feature) {
+            var p = feature.properties || {};
+            var title = popupHas(p['nazwa']) ? popupEscape(p['nazwa']) : 'Obiekt bez nazwy';
+            var meta = [];
+            if (popupHas(p['typ'])) meta.push(popupEscape(popupCap(p['typ'])));
+            if (popupHas(p['miejscowosc'])) meta.push(popupEscape(p['miejscowosc']));
+
+            var html = '<article class="map-popup">';
+            html += '<header class="map-popup__head">';
+            html += '<h3 class="map-popup__title">' + title + '</h3>';
+            if (meta.length) html += '<div class="map-popup__meta">' + meta.join(' &middot; ') + '</div>';
+            if (popupHas(p['status'])) html += '<div class="map-popup__badge">' + popupEscape(popupCap(p['status'])) + '</div>';
+            html += '</header><div class="map-popup__body">';
+
+            function row(label, value, extraClass) {
+                if (!popupHas(value)) return '';
+                return '<div class="map-popup__row"><div class="map-popup__label">' + label + '</div>' +
+                       '<div class="map-popup__value ' + (extraClass || '') + '">' + popupLinked(value) + '</div></div>';
+            }
+
+            html += row('Zapis źródłowy', p['zapis_zrodla'], 'map-popup__source-form');
+            html += row('Warianty', p['warianty']);
+            html += row('Okres', p['okres']);
+            html += row('Źródło', p['zrodlo']);
+
+            if (popupHas(p['dod. inf.'])) {
+                html += '<section class="map-popup__note"><div class="map-popup__note-title">Dodatkowe informacje</div>' +
+                        '<div class="map-popup__note-text">' + popupLinked(p['dod. inf.']) + '</div></section>';
+            }
+            html += '</div></article>';
+            return html;
+        }
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // modify popup if contains media
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var imgTd = tempDiv.querySelector('td img');
+            if (imgTd) {
+                var src = imgTd.getAttribute('src');
+                if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                    popup._contentNode.classList.add('media');
+                    var img = popup._contentNode.querySelector('td img');
+                    if (img) {
+                        // If already loaded (cache), update immediately
+                        if (img.complete && img.naturalHeight > 0) {
+                            popup.update();
+                        } else {
+                            img.addEventListener('load', function() {
+                                popup.update();
+                            });
+                            img.addEventListener('error', function() {
+                                popup.update();
+                            });
+                        }
+                    }
+                } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                    var audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = src;
+                    imgTd.parentNode.replaceChild(audio, imgTd);
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                    var video = document.createElement('video');
+                    video.controls = true;
+                    video.src = src;
+                    video.style.width = "400px";
+                    video.style.height = "300px";
+                    video.style.maxHeight = "60vh";
+                    video.style.maxWidth = "60vw";
+                    imgTd.parentNode.replaceChild(video, imgTd);
+                    popup._contentNode.classList.add('media');
+                    // Aggiorna il popup quando il video carica i metadati
+                    video.addEventListener('loadedmetadata', function() {
+                        popup.update();
+                    });
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else {
+                    popup._contentNode.classList.remove('media');
+                }
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        map.createPane('pane_OpenStreetMap_0');
+        map.getPane('pane_OpenStreetMap_0').style.zIndex = 400;
+        var layer_OpenStreetMap_0 = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            pane: 'pane_OpenStreetMap_0',
+            opacity: 1.0,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_OpenStreetMap_0;
+        map.addLayer(layer_OpenStreetMap_0);
+        function pop_nazwy_punktowe_1(feature, layer) {
+            var content = buildHistoricalPopup(feature);
+            layer.bindPopup(content, { maxHeight: 590, maxWidth: 390, minWidth: 245 });
+        }
+
+        function style_nazwy_punktowe_1_0(feature) {
+            switch(String(feature.properties['typ'])) {
+                case 'szczyt':
+                    return {
+                pane: 'pane_nazwy_punktowe_1',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(200,18,94,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'miejscowość':
+                    return {
+                pane: 'pane_nazwy_punktowe_1',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(107,20,213,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'miejscowość niesamodzielna':
+                    return {
+                pane: 'pane_nazwy_punktowe_1',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(0,255,255,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'inne':
+                    return {
+                pane: 'pane_nazwy_punktowe_1',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,221,0,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_nazwy_punktowe_1');
+        map.getPane('pane_nazwy_punktowe_1').style.zIndex = 401;
+        map.getPane('pane_nazwy_punktowe_1').style['mix-blend-mode'] = 'normal';
+        var layer_nazwy_punktowe_1 = new L.geoJson(json_nazwy_punktowe_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_nazwy_punktowe_1',
+            layerName: 'layer_nazwy_punktowe_1',
+            pane: 'pane_nazwy_punktowe_1',
+            onEachFeature: pop_nazwy_punktowe_1,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_nazwy_punktowe_1_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_nazwy_punktowe_1);
+        map.addLayer(layer_nazwy_punktowe_1);
+        function pop_nazwy_liniowe_2(feature, layer) {
+            var content = buildHistoricalPopup(feature);
+            layer.bindPopup(content, { maxHeight: 590, maxWidth: 390, minWidth: 245 });
+        }
+
+        function style_nazwy_liniowe_2_0(feature) {
+            switch(String(feature.properties['typ'])) {
+                case 'ulica':
+                    return {
+                pane: 'pane_nazwy_liniowe_2',
+                opacity: 1,
+                color: 'rgba(255,150,0,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 3.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'potok':
+                    return {
+                pane: 'pane_nazwy_liniowe_2',
+                opacity: 1,
+                color: 'rgba(43,208,221,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 4.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'inne':
+                    return {
+                pane: 'pane_nazwy_liniowe_2',
+                opacity: 1,
+                color: 'rgba(253,255,4,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 4.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_nazwy_liniowe_2');
+        map.getPane('pane_nazwy_liniowe_2').style.zIndex = 402;
+        map.getPane('pane_nazwy_liniowe_2').style['mix-blend-mode'] = 'normal';
+        var layer_nazwy_liniowe_2 = new L.geoJson(json_nazwy_liniowe_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_nazwy_liniowe_2',
+            layerName: 'layer_nazwy_liniowe_2',
+            pane: 'pane_nazwy_liniowe_2',
+            onEachFeature: pop_nazwy_liniowe_2,
+            style: style_nazwy_liniowe_2_0,
+        });
+        bounds_group.addLayer(layer_nazwy_liniowe_2);
+        map.addLayer(layer_nazwy_liniowe_2);
+        setBounds();
+        var i = 0;
+        layer_nazwy_punktowe_1.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['nazwa'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['nazwa']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_nazwy_punktowe_1'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var i = 0;
+        layer_nazwy_liniowe_2.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['nazwa'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['nazwa']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_nazwy_liniowe_2'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        resetLabels([layer_nazwy_punktowe_1,layer_nazwy_liniowe_2]);
+        map.on("zoomend", function(){
+            resetLabels([layer_nazwy_punktowe_1,layer_nazwy_liniowe_2]);
+        });
+        map.on("layeradd", function(){
+            resetLabels([layer_nazwy_punktowe_1,layer_nazwy_liniowe_2]);
+        });
+        map.on("layerremove", function(){
+            resetLabels([layer_nazwy_punktowe_1,layer_nazwy_liniowe_2]);
+        });
+        </script>
+        <script src="js/label-zoom-control.js"></script>
+    </body>
+</html>
